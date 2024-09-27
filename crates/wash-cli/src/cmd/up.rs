@@ -28,8 +28,8 @@ use wash_lib::context::fs::ContextDir;
 use wash_lib::context::ContextManager;
 use wash_lib::start::{
     ensure_nats_server, ensure_wadm, ensure_wasmcloud, find_wasmcloud_binary, nats_pid_path,
-    start_nats_server, start_wadm, start_wasmcloud_host, NatsConfig, WadmConfig,
-    NATS_SERVER_BINARY, WADM_PID,
+    new_patch_version_of_after_string, start_nats_server, start_wadm, start_wasmcloud_host,
+    NatsConfig, WadmConfig, NATS_SERVER_BINARY, WADM_PID,
 };
 use wasmcloud_control_interface::{Client as CtlClient, ClientBuilder as CtlClientBuilder};
 
@@ -151,8 +151,8 @@ impl From<NatsOpts> for NatsConfig {
 #[derive(Parser, Debug, Clone)]
 pub struct WasmcloudOpts {
     /// wasmCloud host version to download, e.g. `v0.55.0`. See https://github.com/wasmCloud/wasmcloud/releases for releases
-    #[clap(long = "wasmcloud-version", default_value = WASMCLOUD_HOST_VERSION, env = "WASMCLOUD_VERSION")]
-    pub wasmcloud_version: String,
+    #[clap(long = "wasmcloud-version", env = "WASMCLOUD_VERSION")]
+    pub wasmcloud_version: Option<String>,
 
     /// A unique identifier for a lattice, frequently used within NATS topics to isolate messages among different lattices
     #[clap(
@@ -351,8 +351,8 @@ impl WasmcloudOpts {
 #[derive(Parser, Debug, Clone)]
 pub struct WadmOpts {
     /// wadm version to download, e.g. `v0.4.0`. See https://github.com/wasmCloud/wadm/releases for releases
-    #[clap(long = "wadm-version", default_value = WADM_VERSION, env = "WADM_VERSION")]
-    pub wadm_version: String,
+    #[clap(long = "wadm-version", env = "WADM_VERSION")]
+    pub wadm_version: Option<String>,
 
     /// If enabled, wadm will not be downloaded or run as a part of the up command
     #[clap(long = "disable-wadm")]
@@ -411,6 +411,7 @@ pub async fn handle_up(cmd: UpCommand, output_kind: OutputKind) -> Result<Comman
             .cluster_seed
             .or_else(|| ctx.cluster_seed.map(|seed| seed.to_string())),
         wasmcloud_js_domain: cmd.wasmcloud_opts.wasmcloud_js_domain.or(ctx.js_domain),
+        wasmcloud_version: cmd.wasmcloud_opts.wasmcloud_version.clone(),
         ..cmd.wasmcloud_opts
     };
     let host_env = configure_host_env(wasmcloud_opts.clone()).await?;
@@ -552,7 +553,12 @@ pub async fn handle_up(cmd: UpCommand, output_kind: OutputKind) -> Result<Comman
             .into_std()
             .await;
 
-        let wadm_path = ensure_wadm(&cmd.wadm_opts.wadm_version, &install_dir).await;
+        let wadm_version: String = match cmd.wadm_opts.wadm_version {
+            Some(version) => version.to_string(),
+            None => WADM_VERSION.to_string(),
+        };
+        let wadm_path = install_patch_or_default_wadm_version(&wadm_version, &install_dir).await;
+
         match wadm_path {
             Ok(wadm_bin_path) => {
                 let wadm_child = start_wadm(
@@ -571,7 +577,7 @@ pub async fn handle_up(cmd: UpCommand, output_kind: OutputKind) -> Result<Comman
                 }
             }
             Err(e) => {
-                let wadm_version: String = cmd.wadm_opts.wadm_version.clone();
+                let wadm_version: String = wadm_version.to_string();
                 eprintln!("🟨 Couldn't download wadm {wadm_version}: {e}");
                 if e.to_string().contains("Text file busy") {
                     eprintln!("🛟 Please ensure there aren't any leftover wadm processes");
@@ -888,6 +894,33 @@ pub(crate) async fn start_nats(
     Ok(nats_process)
 }
 
+/// Helper function to run an optimistic patch update, but fall back to the previous version if the new version fails
+/// to download.
+async fn install_patch_or_default_wadm_version(
+    version: &str,
+    install_dir: &Path,
+) -> Result<PathBuf> {
+    let new_patch_version = new_patch_version_of_after_string("wasmCloud", "wadm", version).await?;
+    match new_patch_version {
+        Some(new_patch) => {
+            let new_version = format!("v{}", new_patch);
+            match ensure_wadm(&new_version, install_dir).await {
+                Ok(path) => Ok(path),
+                Err(e) => {
+                    debug!(
+                        "🟨 Couldn't download the patched wadm {new_version}, falling back to {version}: {e}"
+                    );
+                    ensure_wadm(version, install_dir).await
+                }
+            }
+        }
+        None => {
+            debug!("No new version found, using the provided: {}", version);
+            ensure_wadm(version, install_dir).await
+        }
+    }
+}
+
 /// Helper function to run wasmCloud in interactive mode
 async fn run_wasmcloud_interactive(
     wasmcloud_child: &mut Child,
@@ -1173,7 +1206,7 @@ mod tests {
         );
         assert_eq!(
             up_all_flags.wasmcloud_opts.wasmcloud_version,
-            "v0.57.1".to_string()
+            Some("v0.57.1".to_string())
         );
         assert_eq!(
             up_all_flags.wasmcloud_opts.lattice.unwrap(),
