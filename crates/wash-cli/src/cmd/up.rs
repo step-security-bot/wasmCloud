@@ -588,6 +588,9 @@ pub async fn handle_up(cmd: UpCommand, output_kind: OutputKind) -> Result<Comman
     } else {
         None
     };
+    let version = wasmcloud_opts
+        .wasmcloud_version
+        .unwrap_or(WASMCLOUD_HOST_VERSION.to_string());
 
     // Download wasmCloud if not already installed
     let wasmcloud_bin_path = match wasmcloud_opts.host_path {
@@ -602,13 +605,12 @@ pub async fn handle_up(cmd: UpCommand, output_kind: OutputKind) -> Result<Comman
         // If start only was not specified, we can download the binary
         None if !wasmcloud_opts.start_only => {
             spinner.update_spinner_message(" Downloading wasmCloud ...".to_string());
-            ensure_wasmcloud(&wasmcloud_opts.wasmcloud_version, &install_dir).await?
+
+            ensure_wasmcloud(&version, &install_dir).await?
         }
         // If no override was provided, we must attempt to find the binary
         None => {
-            if let Some(path) =
-                find_wasmcloud_binary(&install_dir, &wasmcloud_opts.wasmcloud_version).await
-            {
+            if let Some(path) = find_wasmcloud_binary(&install_dir, &version).await {
                 path
             } else {
                 // Ensure we clean up the NATS server and wadm if we can't start wasmCloud
@@ -635,7 +637,6 @@ pub async fn handle_up(cmd: UpCommand, output_kind: OutputKind) -> Result<Comman
     } else {
         Stdio::piped()
     };
-    let version = wasmcloud_opts.wasmcloud_version;
 
     let mut wasmcloud_child = match start_wasmcloud_host(
         &wasmcloud_bin_path,

@@ -17,7 +17,7 @@ const VERSION_FETCHER_CLIENT_USER_AGENT: &str =
 async fn get_chronologically_sorted_releases_of_after(
     owner: &str,
     repo: &str,
-    after_version: semver::Version,
+    after_version: &semver::Version,
 ) -> Result<Vec<GitHubRelease>, anyhow::Error> {
     let releases_of_repo = fetch_latest_releases(owner, repo, after_version).await?;
     let mut releases_of_repo = releases_of_repo.into_iter().collect::<Vec<GitHubRelease>>();
@@ -28,12 +28,18 @@ async fn get_chronologically_sorted_releases_of_after(
 async fn new_patch_releases_of_after(
     owner: &str,
     repo: &str,
-    after_version: Version,
+    after_version: &Version,
 ) -> Result<Vec<GitHubRelease>, Error> {
     let releases = get_chronologically_sorted_releases_of_after(owner, repo, after_version).await?;
     let main_releases = releases
         .into_iter()
-        .filter(|release| release.get_main_artifact_release().is_some())
+        .filter(|release| match &release.get_main_artifact_release() {
+            Some(version) => {
+                return after_version.major == version.major
+                    && after_version.minor == version.minor;
+            }
+            None => false,
+        })
         .collect::<Vec<GitHubRelease>>();
     Ok(main_releases)
 }
@@ -48,7 +54,7 @@ pub async fn new_patch_version_of_after_string(
         Ok(v) => v,
         Err(_) => return Ok(None),
     };
-    return match new_patch_releases_of_after(owner, repo, after_version).await {
+    return match new_patch_releases_of_after(owner, repo, &after_version).await {
         Ok(patches) => match patches.first() {
             Some(patch) => Ok(patch.get_main_artifact_release()),
             None => Ok(None),
@@ -106,7 +112,7 @@ fn format_latest_releases_url(owner: &str, repo: &str, page: u32) -> String {
 async fn fetch_latest_releases(
     owner: &str,
     repo: &str,
-    latest_interested: semver::Version,
+    latest_interested: &semver::Version,
 ) -> Result<Vec<GitHubRelease>, reqwest::Error> {
     let client = reqwest::ClientBuilder::default()
         .user_agent(VERSION_FETCHER_CLIENT_USER_AGENT)
@@ -128,7 +134,7 @@ async fn fetch_latest_releases(
         // Do not add every element in the page only the ones before the found latest tag
         for release in releases_on_page.iter() {
             if let Some(main_release) = release.get_main_artifact_release() {
-                if main_release == latest_interested {
+                if main_release == *latest_interested {
                     break 'fetch_loop;
                 }
             }
@@ -253,7 +259,6 @@ mod tests {
     /// Test if the GitHubRelease struct is parsed correctly from the raw string.
     /// Using an already "outdated" patch version to test if the sorting works correctly and comparable to the current version.
     #[tokio::test]
-    // TODO: revisit this config, did not see the dynamic declaration, only the usage
     #[cfg_attr(not(can_reach_github_com), ignore = "github.com is not reachable")]
     async fn test_fetching_wasm_cloud_patch_versions_after_v_1_0_3() {
         let owner = &"wasmCloud";
@@ -261,9 +266,9 @@ mod tests {
         let latest_version = semver::Version::new(1, 0, 3);
         // Use 1.0.3 as the latest version, since there is a newer version
         let releases =
-            get_chronologically_sorted_releases_of_after(owner, repo, latest_version.clone()).await;
+            get_chronologically_sorted_releases_of_after(owner, repo, &latest_version).await;
         assert!(releases.is_ok());
-        let patch_releases = new_patch_releases_of_after(owner, repo, latest_version.clone()).await;
+        let patch_releases = new_patch_releases_of_after(owner, repo, &latest_version).await;
         assert!(patch_releases.is_ok());
         let patch_releases = patch_releases.unwrap();
         for new_path_release in patch_releases {
@@ -279,8 +284,8 @@ mod tests {
                 ..
             } = version_of_new_release.unwrap();
             assert_eq!(latest_version.major, major, "major version is not changed");
-            assert_eq!(latest_version.minor, minor, "major version is not changed");
-            assert!(latest_version.patch < patch, "major version is bigger");
+            assert_eq!(latest_version.minor, minor, "minor version is not changed");
+            assert!(latest_version.patch < patch, "patch version is bigger");
         }
     }
 }
