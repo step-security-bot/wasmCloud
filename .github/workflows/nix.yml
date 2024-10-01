@@ -20,6 +20,11 @@ jobs:
   fmt:
     runs-on: ubuntu-22.04-16-cores
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+      with:
+        egress-policy: audit
+
     - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
     - uses: ./.github/actions/install-nix
       with:
@@ -29,6 +34,11 @@ jobs:
   run:
     runs-on: ubuntu-22.04-16-cores
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+      with:
+        egress-policy: audit
+
     - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
     - uses: ./.github/actions/install-nix
       with:
@@ -38,6 +48,11 @@ jobs:
   develop:
     runs-on: ubuntu-22.04-16-cores
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+      with:
+        egress-policy: audit
+
     - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
     - uses: ./.github/actions/install-nix
       with:

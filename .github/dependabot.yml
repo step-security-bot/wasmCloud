@@ -48,3 +48,98 @@ updates:
   directory: "/.github/actions/install-nix"
   schedule:
     interval: "daily"
+
+- package-ecosystem: docker
+  directory: /.devcontainer
+  schedule:
+    interval: daily
+
+- package-ecosystem: docker
+  directory: /
+  schedule:
+    interval: daily
+
+- package-ecosystem: docker
+  directory: /crates/secrets-nats-kv
+  schedule:
+    interval: daily
+
+- package-ecosystem: docker
+  directory: /crates/wash-cli
+  schedule:
+    interval: daily
+
+- package-ecosystem: gomod
+  directory: /examples/golang/components/http-client-tinygo
+  schedule:
+    interval: daily
+
+- package-ecosystem: gomod
+  directory: /examples/golang/components/http-echo-tinygo
+  schedule:
+    interval: daily
+
+- package-ecosystem: gomod
+  directory: /examples/golang/components/http-hello-world
+  schedule:
+    interval: daily
+
+- package-ecosystem: gomod
+  directory: /examples/golang/components/sqldb-postgres-query
+  schedule:
+    interval: daily
+
+- package-ecosystem: gomod
+  directory: /examples/golang/providers/custom-template/component
+  schedule:
+    interval: daily
+
+- package-ecosystem: gomod
+  directory: /examples/golang/providers/custom-template
+  schedule:
+    interval: daily
+
+- package-ecosystem: gomod
+  directory: /examples/security/opa
+  schedule:
+    interval: daily
+
+- package-ecosystem: npm
+  directory: /examples/typescript/components/http-hello-world
+  schedule:
+    interval: daily
+
+- package-ecosystem: cargo
+  directory: /tests/components/rust
+  schedule:
+    interval: daily
+
+- package-ecosystem: npm
+  directory: /typescript/apps/washboard-ui
+  schedule:
+    interval: daily
+
+- package-ecosystem: npm
+  directory: /typescript/packages/eslint-config
+  schedule:
+    interval: daily
+
+- package-ecosystem: npm
+  directory: /typescript/packages/lattice-client-core
+  schedule:
+    interval: daily
+
+- package-ecosystem: npm
+  directory: /typescript/packages/lattice-client-react
+  schedule:
+    interval: daily
+
+- package-ecosystem: npm
+  directory: /typescript/packages/prettier-config
+  schedule:
+    interval: daily
+
+- package-ecosystem: npm
+  directory: /typescript/packages/tsconfig
+  schedule:
+    interval: daily

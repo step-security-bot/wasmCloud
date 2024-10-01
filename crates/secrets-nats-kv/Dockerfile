@@ -1,5 +1,5 @@
 # First stage: Build the binary
-FROM rust:1-bullseye AS builder
+FROM rust:1-bullseye@sha256:0deb626fc05b074fc9b1453b007f92f0bec72c219e42a4a89b9b0d17201acb76 AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ WORKDIR crates/secrets-nats-kv
 RUN cargo build --release
 
 # Second stage: Create a minimal container with the binary
-FROM debian:bullseye-slim
+FROM debian:bullseye-slim@sha256:3f9e53602537cc817d96f0ebb131a39bdb16fa8b422137659a9a597e7e3853c1
 
 WORKDIR /app
 

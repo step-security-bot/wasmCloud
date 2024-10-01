@@ -48,6 +48,11 @@ jobs:
           - 0.29.2
           - current
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
         if: ${{ matrix.wash-version == 'current' }}
       - run: rustup show
@@ -152,6 +157,11 @@ jobs:
             lang_version: "20.x"
             test_deploy: wadm.yaml
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       # Download wash binary & install to path
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
@@ -297,6 +307,11 @@ jobs:
             lang: "rust"
             wasm-bin: "http_task_manager_s.wasm"
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       # Determine tag version (if this is a release tag), without the 'v'
       - name: Determine version
